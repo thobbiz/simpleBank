@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: simple-bank-api-deployment
+  labels:
+    app: simple-bank-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: simple-bank-api
+  template:
+    metadata:
+      labels:
+        app: simple-bank-api
+    spec:
+      containers:
+      - name: simple-bank-api
+        image: 599525540354.dkr.ecr.eu-north-1.amazonaws.com/simplebank:b139eeb67e1a808dab5a3a59c193bb68ed18a6ae
+        ports:
+        - containerPort: 8080

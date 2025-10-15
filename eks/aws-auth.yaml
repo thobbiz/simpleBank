@@ -9,3 +9,8 @@ data:
       username: github-ci
       groups:
         - system:masters
+  mapRoles: |
+    - rolearn: arn:aws:iam::599525540354:role/Simplebank-DeployRole
+      username: github-actions-deploy
+      groups:
+        - system:masters

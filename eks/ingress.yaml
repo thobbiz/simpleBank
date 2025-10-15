@@ -11,6 +11,7 @@ metadata:
   name: simple-bank-ingress
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /
+    cert-manager.io/cluster-issuer: letsencrypt
 spec:
   ingressClassName: nginx
   rules:
@@ -23,3 +24,6 @@ spec:
             name: simple-bank-api-service
             port:
               number: 80
+  # tls:
+  # - hosts:
+  #   secretName: simple-bank-api-cert

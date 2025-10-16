@@ -49,6 +49,16 @@ jobs:
     - name: Update kube config
       run: aws eks update-kubeconfig --name simple-bank --region eu-north-1
 
+    - name: Debug AWS identity
+      run: |
+        aws sts get-caller-identity
+        aws eks describe-cluster --name simple-bank --region eu-north-1
+
+    - name: Test kubectl connection
+      run: |
+        kubectl cluster-info
+        kubectl auth can-i get pods --all-namespaces
+
     - name: Deploy image to Amazon EKS
       run: |
         kubectl apply -f eks/aws-auth.yaml

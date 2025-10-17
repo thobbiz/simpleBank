@@ -4,8 +4,8 @@ metadata:
   name: aws-auth
   namespace: kube-system
 data:
-  mapUsers: |
-    - userarn: arn:aws:iam::599525540354:user/github-ci
+  mapRoles: |
+    - rolearn: arn:aws:iam::599525540354:role/Simplebank-DeployRole
       username: github-ci
       groups:
         - system:masters

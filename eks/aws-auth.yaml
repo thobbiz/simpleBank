@@ -9,3 +9,7 @@ data:
       username: github-user
       groups:
         - system:masters
+    - rolearn: arn:aws:sts::599525540354:assumed-role/Simplebank-DeployRole/GitHubActions
+      username: github-actions
+      groups:
+        - system:masters

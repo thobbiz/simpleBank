@@ -6,6 +6,6 @@ metadata:
 data:
   mapRoles: |
     - rolearn: arn:aws:iam::599525540354:role/Simplebank-DeployRole
-      username: github-ci
+      username: github-user
       groups:
         - system:masters

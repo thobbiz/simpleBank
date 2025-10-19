@@ -47,8 +47,12 @@ jobs:
         run: aws eks update-kubeconfig --name simple-bank --region eu-north-1
 
       - name: Deploy image to Amazon EKS
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
           kubectl apply -f eks/aws-auth.yaml
-          kubectl apply -f eks/deployment.yaml
+          kubectl set image deployment/simple-bank-api-deployment \
+                simple-bank-api=$ECR_REGISTRY/simplebank:$IMAGE_TAG
           kubectl apply -f eks/service.yaml
           kubectl apply -f eks/ingress.yaml

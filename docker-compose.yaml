@@ -3,9 +3,9 @@ services:
   postgres:
     image: postgres:latest
     environment:
-      -  POSTGRES_USER=root
-      -  POSTGRES_PASSWORD=secret
-      -  POSTGRES_DB=simple_bank
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=secret
+      - POSTGRES_DB=simple_bank
   api:
     build:
       context: .
@@ -16,5 +16,5 @@ services:
       - DB_SOURCE=postgresql://root:secret@postgres:5432/simple_bank?sslmode=disable
     depends_on:
       - postgres
-    entrypoint: [ "/app/wait-for.sh", "postgres:5432", "--", "/app/start.sh"]
+    entrypoint: ["/app/wait-for.sh", "postgres:5432", "--", "/app/start.sh"]
     command: ["/app/main"]

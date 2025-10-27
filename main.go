@@ -16,6 +16,7 @@ import (
 	"github.com/thobbiz/simplebank/util"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 func main() {
@@ -63,7 +64,16 @@ func runGatewayServer(config util.Config, store db.Store) {
 		log.Fatal("cannot create server: ", err)
 	}
 
-	grpcMux := runtime.NewServeMux()
+	jsonOption := runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.JSONPb{
+		MarshalOptions: protojson.MarshalOptions{
+			UseProtoNames: true,
+		},
+		UnmarshalOptions: protojson.UnmarshalOptions{
+			DiscardUnknown: true,
+		},
+	})
+
+	grpcMux := runtime.NewServeMux(jsonOption)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

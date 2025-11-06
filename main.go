@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	"database/sql"
-	"log"
 	"net"
 	"net/http"
+	"os"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -13,6 +13,8 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	_ "github.com/lib/pq"
 	"github.com/rakyll/statik/fs"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/thobbiz/simplebank/api"
 	db "github.com/thobbiz/simplebank/db/sqlc"
 	_ "github.com/thobbiz/simplebank/doc/statik"
@@ -25,13 +27,23 @@ import (
 )
 
 func main() {
+	logLogger := log.Logger
+	logger := logLogger.Info()
+
 	config, err := util.LoadConfig(".")
 	if err != nil {
-		log.Fatal("Cannot load config:", err)
+		logger = logLogger.Fatal().Err(err)
+		logger.Msg("Cannot load config:")
 	}
+
+	if config.Environment == "development" {
+		logLogger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	}
+
 	conn, err := sql.Open(config.DBDriver, config.DBSource)
 	if err != nil {
-		log.Fatal("cannot connect to db!", err)
+		logger = logLogger.Fatal().Err(err)
+		logger.Msg("cannot connect to db!")
 	}
 
 	runDBMigration(config.MigrationURL, config.DBSource)
@@ -42,45 +54,67 @@ func main() {
 }
 
 func runDBMigration(migrationURL string, dbSource string) {
+	logLogger := log.Logger
+	logLogger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+
+	logger := logLogger.Info()
+
 	migration, err := migrate.New(migrationURL, dbSource)
 	if err != nil {
-		log.Fatal("cannot create new migrate instance: ", err)
+		logger = logLogger.Fatal().Err(err)
+		logger.Msg("cannot create new migrate instance: ")
 	}
 
 	if err = migration.Up(); err != nil && err != migrate.ErrNoChange {
-		log.Fatal("failed to run migrate up: ", err)
+		logger = logLogger.Fatal().Err(err)
+		logger.Msg("failed to run migrate up: ")
 	}
 
-	log.Println("db migrated successfully")
+	logger.Msg("db migrated successfully")
 }
 
 func runGrpcServer(config util.Config, store db.Store) {
+	logLogger := log.Logger
+	logLogger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+
+	logger := logLogger.Info()
+
 	server, err := gapi.NewServer(config, store)
 	if err != nil {
-		log.Fatal("cannot create server: ", err)
+		logger = logLogger.Fatal().Err(err)
+		logger.Msg("cannot create server: ")
 	}
 
-	grpcServer := grpc.NewServer()
+	grpcLogger := grpc.UnaryInterceptor(gapi.GrpcLogger)
+	grpcServer := grpc.NewServer(grpcLogger)
 
 	pb.RegisterSimpleBankServer(grpcServer, server)
 	reflection.Register(grpcServer)
 
 	listener, err := net.Listen("tcp", config.GRPCServerAddress)
 	if err != nil {
-		log.Fatal("cannot create listener")
+		logger = logLogger.Fatal().Err(err)
+		logger.Msg("cannot create listener")
 	}
 
-	log.Printf("Start gRPC server at %s", listener.Addr().String())
+	logger.Msgf("Start gRPC server at %s", listener.Addr().String())
 	err = grpcServer.Serve(listener)
 	if err != nil {
-		log.Fatal("cannot start gRPC server")
+		logger = logLogger.Fatal().Err(err)
+		logger.Msg("cannot start gRPC server")
 	}
 }
 
 func runGatewayServer(config util.Config, store db.Store) {
+	logLogger := log.Logger
+	logLogger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+
+	logger := logLogger.Info()
+
 	server, err := gapi.NewServer(config, store)
 	if err != nil {
-		log.Fatal("cannot create server: ", err)
+		logger = logLogger.Fatal().Err(err)
+		logger.Msg("cannot create server: ")
 	}
 
 	jsonOption := runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.JSONPb{
@@ -99,7 +133,8 @@ func runGatewayServer(config util.Config, store db.Store) {
 
 	err = pb.RegisterSimpleBankHandlerServer(ctx, grpcMux, server)
 	if err != nil {
-		log.Fatal("cannot register handler server: ", err)
+		logger = logLogger.Fatal().Err(err)
+		logger.Msg("cannot register handler server: ")
 	}
 
 	mux := http.NewServeMux()
@@ -107,7 +142,8 @@ func runGatewayServer(config util.Config, store db.Store) {
 
 	statikFS, err := fs.New()
 	if err != nil {
-		log.Fatal("cannot create statik fs: ", err)
+		logger = logLogger.Fatal().Err(err)
+		logger.Msg("cannot create statik fs: ")
 	}
 
 	swaggerHandler := http.StripPrefix("/swagger/", http.FileServer(statikFS))
@@ -115,24 +151,33 @@ func runGatewayServer(config util.Config, store db.Store) {
 
 	listener, err := net.Listen("tcp", config.HTTPServerAddress)
 	if err != nil {
-		log.Fatal("cannot create listener: ", err)
+		logger = logLogger.Fatal().Err(err)
+		logger.Msg("cannot create listener: ")
 	}
 
-	log.Printf("Start HTTP gateway server at %s", listener.Addr().String())
+	logger.Msgf("Start HTTP gateway server at %s", listener.Addr().String())
 	err = http.Serve(listener, mux)
 	if err != nil {
-		log.Fatal("cannot start HTTP gateway server: ", err)
+		logger = logLogger.Fatal().Err(err)
+		logger.Msg("cannot start HTTP gateway server: ")
 	}
 }
 
 func runGinServer(config util.Config, store db.Store) {
+	logLogger := log.Logger
+	logLogger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+
+	logger := logLogger.Info()
+
 	server, err := api.NewServer(config, store)
 	if err != nil {
-		log.Fatal("cannot create server: ", err)
+		logger = logLogger.Fatal().Err(err)
+		logger.Msg("cannot create server: ")
 	}
 
 	err = server.Start(config.HTTPServerAddress)
 	if err != nil {
-		log.Fatal("Cannot start server!")
+		logger = logLogger.Fatal().Err(err)
+		logger.Msg("Cannot start server!")
 	}
 }

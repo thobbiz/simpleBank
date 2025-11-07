@@ -1,0 +1,58 @@
+# name: Deploy to production
+
+# on:
+#   push:
+#     branches: [main]
+
+# permissions:
+#   id-token: write
+# jobs:
+#   deploy:
+#     name: Build image
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v3
+
+#       - name: Install kubectl
+#         uses: azure/setup-kubectl@v4
+#         with:
+#           version: "v1.34.1"
+#         id: install
+
+#       - name: Configure AWS credentials
+#         uses: aws-actions/configure-aws-credentials@v4
+#         with:
+#           role-to-assume: arn:aws:iam::599525540354:role/Simplebank-DeployRole
+#           aws-region: eu-north-1
+
+#       - name: Login to Amazon ECR
+#         id: login-ecr
+#         uses: aws-actions/amazon-ecr-login@v2
+
+#       - name: Load secrets and save to app.env
+#         run: aws secretsmanager get-secret-value --secret-id simple_bank --query SecretString --output text | jq -r 'to_entries | map("\(.key)=\(.value)") | .[]' > app.env
+
+#       - name: Build, tag, and push docker image to Amazon ECR
+#         env:
+#           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+#           REPOSITORY: simplebank
+#           IMAGE_TAG: ${{ github.sha }}
+#         run: |
+#           docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG -t $REGISTRY/$REPOSITORY:latest .
+#           docker push -a  $REGISTRY/$REPOSITORY
+
+#       - name: Update kube config
+#         run: aws eks update-kubeconfig --name simple-bank --region eu-north-1
+
+#       - name: Deploy image to Amazon EKS
+#         env:
+#           IMAGE_TAG: ${{ github.sha }}
+#           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+#         run: |
+#           kubectl apply -f eks/aws-auth.yaml
+#           kubectl set image deployment/simple-bank-api-deployment \
+#                 simple-bank-api=$ECR_REGISTRY/simplebank:$IMAGE_TAG
+#           kubectl apply -f eks/service.yaml
+#           kubectl apply -f eks/ingress.yaml

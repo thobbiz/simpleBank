@@ -11,6 +11,7 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/hibiken/asynq"
 	_ "github.com/lib/pq"
 	"github.com/rakyll/statik/fs"
 	"github.com/rs/zerolog"
@@ -21,6 +22,7 @@ import (
 	"github.com/thobbiz/simplebank/gapi"
 	"github.com/thobbiz/simplebank/pb"
 	"github.com/thobbiz/simplebank/util"
+	"github.com/thobbiz/simplebank/worker"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -33,7 +35,7 @@ func main() {
 	config, err := util.LoadConfig(".")
 	if err != nil {
 		logger = logLogger.Fatal().Err(err)
-		logger.Msg("Cannot load config:")
+		logger.Msg("cannot load config:")
 	}
 
 	if config.Environment == "development" {
@@ -49,8 +51,16 @@ func main() {
 	runDBMigration(config.MigrationURL, config.DBSource)
 
 	store := db.NewStore(conn)
-	go runGatewayServer(config, store)
-	runGrpcServer(config, store)
+
+	redisOpt := asynq.RedisClientOpt{
+		Addr: config.RedisAddress,
+	}
+
+	taskDistributor := worker.NewRedisTaskDistributor(redisOpt)
+
+	go runTaskProcessor(redisOpt, store)
+	go runGatewayServer(config, store, taskDistributor)
+	runGrpcServer(config, store, taskDistributor)
 }
 
 func runDBMigration(migrationURL string, dbSource string) {
@@ -73,13 +83,29 @@ func runDBMigration(migrationURL string, dbSource string) {
 	logger.Msg("db migrated successfully")
 }
 
-func runGrpcServer(config util.Config, store db.Store) {
+func runTaskProcessor(redisOpt asynq.RedisClientOpt, store db.Store) {
 	logLogger := log.Logger
 	logLogger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
 	logger := logLogger.Info()
 
-	server, err := gapi.NewServer(config, store)
+	taskProcessor := worker.NewRedisTaskProcessor(redisOpt, store)
+	logger.Msg("start task processor")
+
+	err := taskProcessor.Start()
+	if err != nil {
+		logger = logLogger.Fatal().Err(err)
+		logger.Msg("failed to start task processor")
+	}
+}
+
+func runGrpcServer(config util.Config, store db.Store, taskDistributor worker.TaskDistributor) {
+	logLogger := log.Logger
+	logLogger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+
+	logger := logLogger.Info()
+
+	server, err := gapi.NewServer(config, store, taskDistributor)
 	if err != nil {
 		logger = logLogger.Fatal().Err(err)
 		logger.Msg("cannot create server: ")
@@ -97,7 +123,7 @@ func runGrpcServer(config util.Config, store db.Store) {
 		logger.Msg("cannot create listener")
 	}
 
-	logger.Msgf("Start gRPC server at %s", listener.Addr().String())
+	logger.Msgf("start gRPC server at %s", listener.Addr().String())
 	err = grpcServer.Serve(listener)
 	if err != nil {
 		logger = logLogger.Fatal().Err(err)
@@ -105,13 +131,13 @@ func runGrpcServer(config util.Config, store db.Store) {
 	}
 }
 
-func runGatewayServer(config util.Config, store db.Store) {
+func runGatewayServer(config util.Config, store db.Store, taskDistributor worker.TaskDistributor) {
 	logLogger := log.Logger
 	logLogger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
 	logger := logLogger.Info()
 
-	server, err := gapi.NewServer(config, store)
+	server, err := gapi.NewServer(config, store, taskDistributor)
 	if err != nil {
 		logger = logLogger.Fatal().Err(err)
 		logger.Msg("cannot create server: ")
@@ -155,7 +181,7 @@ func runGatewayServer(config util.Config, store db.Store) {
 		logger.Msg("cannot create listener: ")
 	}
 
-	logger.Msgf("Start HTTP gateway server at %s", listener.Addr().String())
+	logger.Msgf("start HTTP gateway server at %s", listener.Addr().String())
 	handler := gapi.HttpLogger(mux)
 	err = http.Serve(listener, handler)
 	if err != nil {

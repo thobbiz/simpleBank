@@ -5,8 +5,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/hibiken/asynq"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -21,6 +23,10 @@ func (distributor *RedisTaskDistributor) DistributeTaskSendVerifyEmail(
 	payload *PayloadSendVerifyEmail,
 	opts ...asynq.Option,
 ) error {
+
+	logLogger := log.Logger
+	logLogger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+
 	jsonPayload, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("failed to marshal task payload: %w", err)
@@ -31,13 +37,17 @@ func (distributor *RedisTaskDistributor) DistributeTaskSendVerifyEmail(
 		return fmt.Errorf("failed to enqueue task: %w", err)
 	}
 
-	log.Info().Str("type", task.Type()).Bytes("payload", task.Payload()).Str("queue", info.Queue).Int("max_retry", info.MaxRetry).Msg("enqueued task")
+	logLogger.Info().Str("type", task.Type()).Bytes("payload", task.Payload()).Str("queue", info.Queue).Int("max_retry", info.MaxRetry).Msg("enqueued task")
 
 	return nil
 }
 
 func (processor *RedisTaskProcessor) ProcessTaskSendVerifyEmail(ctx context.Context, task *asynq.Task) error {
 	var payload PayloadSendVerifyEmail
+
+	logLogger := log.Logger
+	logLogger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+
 	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
 		return fmt.Errorf("failed to unmarshal payload: %w", asynq.SkipRetry)
 	}
@@ -51,7 +61,7 @@ func (processor *RedisTaskProcessor) ProcessTaskSendVerifyEmail(ctx context.Cont
 	}
 
 	// TODO: send email to user
-	log.Info().Str("type", task.Type()).Bytes("payload", task.Payload()).
+	logLogger.Info().Str("type", task.Type()).Bytes("payload", task.Payload()).
 		Str("email", user.Email).Msg("processed task")
 
 	return nil

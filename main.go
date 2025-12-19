@@ -64,8 +64,7 @@ func main() {
 }
 
 func runDBMigration(migrationURL string, dbSource string) {
-	logLogger := log.Logger
-	logLogger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	logLogger := log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
 	logger := logLogger.Info()
 
@@ -84,9 +83,7 @@ func runDBMigration(migrationURL string, dbSource string) {
 }
 
 func runTaskProcessor(redisOpt asynq.RedisClientOpt, store db.Store) {
-	logLogger := log.Logger
-	logLogger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
-
+	logLogger := log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	logger := logLogger.Info()
 
 	taskProcessor := worker.NewRedisTaskProcessor(redisOpt, store)
@@ -100,8 +97,7 @@ func runTaskProcessor(redisOpt asynq.RedisClientOpt, store db.Store) {
 }
 
 func runGrpcServer(config util.Config, store db.Store, taskDistributor worker.TaskDistributor) {
-	logLogger := log.Logger
-	logLogger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	logLogger := log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
 	logger := logLogger.Info()
 
@@ -132,8 +128,7 @@ func runGrpcServer(config util.Config, store db.Store, taskDistributor worker.Ta
 }
 
 func runGatewayServer(config util.Config, store db.Store, taskDistributor worker.TaskDistributor) {
-	logLogger := log.Logger
-	logLogger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	logLogger := log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
 	logger := logLogger.Info()
 
@@ -191,8 +186,7 @@ func runGatewayServer(config util.Config, store db.Store, taskDistributor worker
 }
 
 func runGinServer(config util.Config, store db.Store) {
-	logLogger := log.Logger
-	logLogger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	logLogger := log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
 	logger := logLogger.Info()
 

@@ -1,8 +1,3 @@
-ifneq ("$(wildcard app.env)","")
-    include app.env
-    export $(shell sed 's/=.*//' app.env)
-endif
-
 DB_URL=postgresql://root:secret@localhost:5432/simple_bank?sslmode=disable
 
 network:

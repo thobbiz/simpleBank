@@ -14,9 +14,6 @@ jobs:
             postgres:
                 image: postgres
                 env:
-                    EMAIL_SENDER_NAME: ${{ secrets.EMAIL_SENDER_NAME }}
-                    EMAIL_SENDER_ADDRESS: ${{ secrets.EMAIL_SENDER_ADDRESS }}
-                    EMAIL_SENDER_PASSWORD: ${{ secrets.EMAIL_SENDER_PASSWORD }}
                     POSTGRES_DB: simple_bank
                     POSTGRES_USER: root
                     POSTGRES_PASSWORD: secret
@@ -53,6 +50,9 @@ jobs:
                   DB_DRIVER=postgres
                   DB_SOURCE=postgresql://root:secret@localhost:5432/simple_bank?sslmode=disable
                   SERVER_ADDRESS=0.0.0.0:8080
+                  EMAIL_SENDER_NAME=${{ secrets.EMAIL_SENDER_NAME }}
+                    EMAIL_SENDER_ADDRESS=${{ secrets.EMAIL_SENDER_ADDRESS }}
+                    EMAIL_SENDER_PASSWORD=${{ secrets.EMAIL_SENDER_PASSWORD }}
                   EOF
 
             - name: Test
